@@ -76,7 +76,85 @@
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body class="bg-gray-50 h-full"><!-- Toast Container -->
+ <body class="bg-gray-50 h-full">
+<!-- Multi-unidade: modais for quick create (injected) -->
+<div id="multi-modals" style="display:none;">
+  <div id="modal-user-simple" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+    <div style="background:#fff;padding:20px;max-width:420px;margin:40px auto;border-radius:8px;">
+      <h3>Novo Usuário</h3>
+      <input id="mu-name" placeholder="Nome" style="width:100%;padding:8px;margin:6px 0;">
+      <input id="mu-email" placeholder="Email" style="width:100%;padding:8px;margin:6px 0;">
+      <select id="mu-role" style="width:100%;padding:8px;margin:6px 0;">
+        <option value="barbeiro">Barbeiro</option>
+        <option value="caixa">Caixa</option>
+        <option value="admin">Administrador</option>
+      </select>
+      <select id="mu-barbershop" style="width:100%;padding:8px;margin:6px 0;">
+        <option value="barber1">Barbearia Pedro 1</option>
+        <option value="barber2">Barbearia Pedro 2</option>
+      </select>
+      <div style="text-align:right;">
+        <button id="mu-cancel" style="margin-right:8px;">Cancelar</button>
+        <button id="mu-save">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-service-simple" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+    <div style="background:#fff;padding:20px;max-width:420px;margin:40px auto;border-radius:8px;">
+      <h3>Novo Serviço</h3>
+      <input id="ms-name" placeholder="Nome do Serviço" style="width:100%;padding:8px;margin:6px 0;">
+      <input id="ms-price" placeholder="Preço" type="number" style="width:100%;padding:8px;margin:6px 0;">
+      <select id="ms-barbershop" style="width:100%;padding:8px;margin:6px 0;">
+        <option value="barber1">Barbearia Pedro 1</option>
+        <option value="barber2">Barbearia Pedro 2</option>
+      </select>
+      <div style="text-align:right;">
+        <button id="ms-cancel" style="margin-right:8px;">Cancelar</button>
+        <button id="ms-save">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Modal handlers (injected)
+(function(){
+  function show(id){ document.getElementById(id).style.display='flex'; }
+  function hide(id){ document.getElementById(id).style.display='none'; }
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id==='mu-cancel') hide('modal-user-simple');
+    if(e.target && e.target.id==='ms-cancel') hide('modal-service-simple');
+  });
+  const btnUser = document.getElementById('new-user-btn');
+  if(btnUser) btnUser.addEventListener('click', ()=>{ show('modal-user-simple'); });
+  const btnService = document.getElementById('new-service-btn');
+  if(btnService) btnService.addEventListener('click', ()=>{ show('modal-service-simple'); });
+  window.openUserModal = function(){ show('modal-user-simple'); };
+  window.openServiceModal = function(){ show('modal-service-simple'); };
+  document.getElementById('mu-save').addEventListener('click', async function(){
+    const name = document.getElementById('mu-name').value.trim();
+    const email = document.getElementById('mu-email').value.trim();
+    const role = document.getElementById('mu-role').value;
+    const barbershopId = document.getElementById('mu-barbershop').value || 'barber1';
+    if(!name || !email){ alert('Nome e email são obrigatórios'); return; }
+    try{
+      await db.collection('users').add({ name, email, role, barbershopId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      hide('modal-user-simple'); if(typeof loadUsers==='function') loadUsers(); alert('Usuário criado com sucesso');
+    }catch(e){ console.error(e); alert('Erro ao criar usuário'); }
+  });
+  document.getElementById('ms-save').addEventListener('click', async function(){
+    const name = document.getElementById('ms-name').value.trim();
+    const price = parseFloat(document.getElementById('ms-price').value) || 0;
+    const barbershopId = document.getElementById('ms-barbershop').value || 'barber1';
+    if(!name){ alert('Nome do serviço obrigatório'); return; }
+    try{
+      await db.collection('services').add({ name, price, barbershopId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      hide('modal-service-simple'); if(typeof loadServices==='function') loadServices(); alert('Serviço criado com sucesso');
+    }catch(e){ console.error(e); alert('Erro ao criar serviço'); }
+  });
+})();
+</script>
+<!-- Toast Container -->
   <div id="toast-container"></div><!-- Login Screen -->
   <div id="login-screen" class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
    <div class="max-w-md w-full space-y-8">
@@ -150,11 +228,6 @@
    <div class="lg:ml-64"><!-- Header -->
     <header class="bg-white shadow-sm border-b border-gray-200">
      <div class="flex items-center justify-between px-4 py-4">
-        <!-- Admin barbershop selector (inserido automaticamente) -->
-        <div id="admin-barbershop-container" class="flex items-center space-x-4" style="margin-left:auto;">
-            <!-- will be populated by JS if currentUser.role === 'admin' -->
-        </div>
-    
       <div class="flex items-center"><button id="mobile-menu-btn" class="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 mr-2">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
         </svg></button>
@@ -163,7 +236,9 @@
       <div class="flex items-center space-x-4"><span class="text-sm text-gray-500" id="current-date"></span>
       </div>
      </div>
-    </header><!-- Content Area -->
+    
+    <div id="admin-barbershop-container" style="position:absolute; right:18px; top:12px; z-index:9999;"></div>
+</header><!-- Content Area -->
     <main class="p-6"><!-- Dashboard Section -->
      <div id="dashboard-section" class="section">
       <div class="mb-6">
@@ -422,6 +497,36 @@
             element.innerHTML = '<div class="flex items-center justify-center py-8"><div class="loading-spinner"></div></div>';
         }
 
+// --- Multi-unidade helpers ---
+function getActiveBarbershop() {
+    // If currentUser exists and is not admin, return their barbershopId; admin uses sessionStorage or 'all'
+    try {
+        if (window.currentUser && window.currentUser.role && window.currentUser.role !== 'admin') {
+            return window.currentUser.barbershopId || 'barber1';
+        }
+    } catch (e) { /* ignore */ }
+    return sessionStorage.getItem('activeBarbershop') || 'all';
+}
+function applyBarbershopFilterToQuery(q) {
+    try {
+        const active = getActiveBarbershop();
+        if (!active || active === 'all') return q;
+        if (q && typeof q.where === 'function') {
+            // best-effort: avoid adding duplicate filter
+            try {
+                const s = q.toString ? q.toString() : '';
+                if (s && s.indexOf("barbershopId") !== -1) return q;
+            } catch (e) {}
+            return q.where('barbershopId', '==', active);
+        }
+    } catch (e) {
+        console.warn('applyBarbershopFilterToQuery error', e);
+    }
+    return q;
+}
+// --- end helpers ---
+
+
         // Authentication Functions
         async function login(email, password) {
             try {
@@ -482,10 +587,16 @@
                     const password = '123456';
                     
                     await db.collection('users').add({
-                        name: 'Administrador', email: email, password: password, // Store password directly (for demo purposes) role: 'admin', serviceCommissionPercentage: 0, productCommissionPercentage: 0, status: 'ativo', createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        barbershopId: 'all',
+                        name: 'Administrador',
+                        email: email,
+                        password: password, // Store password directly (for demo purposes)
+                        role: 'admin',
+                        serviceCommissionPercentage: 0,
+                        productCommissionPercentage: 0,
+                        status: 'ativo',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
+                    
                     showToast('Usuário administrador criado! Email: admin@barbearia.com | Senha: 123456', 'success');
                     
                     // Auto-fill login form
@@ -623,9 +734,7 @@
                 const todayStr = today.toISOString().split('T')[0];
                 
                 // Load today's appointments
-                const appointmentsQuery = await db.collection('appointments')
-                    .where('date', '==', todayStr)
-                    .get();
+                let appointmentsQueryRef = db.collection('appointments').where('date','==', todayStr); appointmentsQueryRef = applyBarbershopFilterToQuery(appointmentsQueryRef); const appointmentsQuery = await appointmentsQueryRef.get();
                 
                 document.getElementById('today-appointments').textContent = appointmentsQuery.size;
                 
@@ -645,7 +754,7 @@
                 let myProductsCommission = 0;
                 
                 try {
-                    const cashierDoc = await db.collection('cashier').doc(todayStr).get();
+                    let cashierRef = db.collection('cashier').where('date','==', todayStr); cashierRef = applyBarbershopFilterToQuery(cashierRef); const cashierSnap = await cashierRef.get(); const cashierDoc = cashierSnap.docs.length ? cashierSnap.docs[0] : { exists:false, data: ()=>({}) };
                     if (cashierDoc.exists) {
                         const sales = cashierDoc.data().sales || [];
                         
@@ -684,7 +793,7 @@
                 }
                 
                 // Load total clients
-                const clientsQuery = await db.collection('clients').get();
+                let clientsRef = db.collection('clients'); clientsRef = applyBarbershopFilterToQuery(clientsRef); const clientsQuery = await clientsRef.get();
                 document.getElementById('total-clients').textContent = clientsQuery.size;
                 
                 // Load next appointments
@@ -704,12 +813,7 @@
                 const today = new Date();
                 const todayStr = today.toISOString().split('T')[0];
                 
-                const query = db.collection('appointments')
-                    .where('date', '>=', todayStr)
-                    .where('status', '==', 'agendado')
-                    .orderBy('date')
-                    .orderBy('time')
-                    .limit(5);
+                let query = db.collection('appointments').where('date','>=', todayStr).where('status','==','agendado').orderBy('date').orderBy('time').limit(5); query = applyBarbershopFilterToQuery(query);
                 
                 const snapshot = await query.get();
                 const container = document.getElementById('next-appointments');
@@ -755,7 +859,7 @@
         async function checkCashierStatus() {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                const cashierDoc = await db.collection('cashier').doc(today).get();
+                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
                 
                 const statusContainer = document.getElementById('cashier-status');
                 
@@ -803,9 +907,7 @@
                 const currentDateStr = currentDate.toISOString().split('T')[0];
                 
                 // Get appointments for current day
-                const snapshot = await db.collection('appointments')
-                    .where('date', '==', currentDateStr)
-                    .get();
+                let q_apps = db.collection('appointments').where('date','==', currentDateStr); q_apps = applyBarbershopFilterToQuery(q_apps); const snapshot = await q_apps.get();
                 
                 const dayAppointments = [];
                 
@@ -1085,7 +1187,7 @@
             showLoading(container);
             
             try {
-                const snapshot = await db.collection('clients').orderBy('name').get();
+                let q_clients = db.collection('clients').orderBy('name'); q_clients = applyBarbershopFilterToQuery(q_clients); const snapshot = await q_clients.get();
                 
                 if (snapshot.empty) {
                     container.innerHTML = `
@@ -1136,7 +1238,7 @@
             showLoading(container);
             
             try {
-                const snapshot = await db.collection('services').orderBy('name').get();
+                let q_services = db.collection('services').orderBy('name'); q_services = applyBarbershopFilterToQuery(q_services); const snapshot = await q_services.get();
                 
                 if (snapshot.empty) {
                     container.innerHTML = `
@@ -1242,7 +1344,7 @@
             showLoading(container);
             
             try {
-                const snapshot = await db.collection('products').orderBy('name').get();
+                let q_products = db.collection('products').orderBy('name'); q_products = applyBarbershopFilterToQuery(q_products); const snapshot = await q_products.get();
                 
                 if (snapshot.empty) {
                     container.innerHTML = `
@@ -1311,7 +1413,7 @@
             
             try {
                 const today = new Date().toISOString().split('T')[0];
-                const cashierDoc = await db.collection('cashier').doc(today).get();
+                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
                 
                 if (!cashierDoc.exists || !cashierDoc.data().isOpen) {
                     container.innerHTML = `
@@ -1627,20 +1729,13 @@
         }
 
         
-
 async function loadReports() {
     const container = document.getElementById('reports-content');
     container.innerHTML = `
         <div class="bg-white p-6 rounded-lg shadow-sm border">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Relatórios Financeiros</h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
-                    <select id="barbershop-select" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                        <option value="all">Todas as Unidades</option>
-                    </select>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
                     <input type="date" id="report-start" class="w-full border border-gray-300 rounded-md px-3 py-2">
@@ -1671,12 +1766,12 @@ async function loadReports() {
             </div>
 
             <div id="report-results">
-                <p class="text-gray-500">Selecione um período, unidade, e clique em "Gerar Relatório".</p>
+                <p class="text-gray-500">Selecione um período e clique em "Gerar Relatório".</p>
             </div>
         </div>
     `;
 
-    const barbershopSelect = document.getElementById('barbershop-select');
+    // References to DOM elements
     const userFilterSelect = document.getElementById('user-filter');
     const userFilterContainer = document.getElementById('user-filter-container');
     const reportTypeSelect = document.getElementById('report-type');
@@ -1684,91 +1779,55 @@ async function loadReports() {
     const downloadBtn = document.getElementById('download-pdf');
     const reportResults = document.getElementById('report-results');
 
-    // Helper to check date range (doc id format YYYY-MM-DD)
+    // Helper to parse date strings (YYYY-MM-DD)
     function dateInRange(docDateStr, startStr, endStr) {
-        if (!docDateStr) return false;
-        if (!startStr || !endStr) return false;
-        return docDateStr >= startStr && docDateStr <= endStr;
-    }
-
-    // Load available barbershop IDs from users, services and cashier collections
-    async function loadBarbershops() {
-        const ids = new Set();
         try {
-            const usersSnap = await db.collection('users').get();
-            usersSnap.forEach(d => { const u = d.data(); if (u && u.barbershopId) ids.add(u.barbershopId); });
-        } catch (e) { console.error('Erro ao carregar barbershops via users:', e); }
-        try {
-            const servicesSnap = await db.collection('services').get();
-            servicesSnap.forEach(d => { const s = d.data(); if (s && s.barbershopId) ids.add(s.barbershopId); });
-        } catch (e) { console.error('Erro ao carregar barbershops via services:', e); }
-        try {
-            const cashierSnap = await db.collection('cashier').get();
-            cashierSnap.forEach(d => { const c = d.data(); if (c && c.barbershopId) ids.add(c.barbershopId); });
-        } catch (e) { console.error('Erro ao carregar barbershops via cashier:', e); }
-
-        // Populate select
-        ids.forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = id;
-            barbershopSelect.appendChild(opt);
-        });
-
-        // If currentUser has a barbershopId and is not admin, select it
-        if (currentUser && currentUser.barbershopId && currentUser.role !== 'admin') {
-            barbershopSelect.value = currentUser.barbershopId;
-            barbershopSelect.disabled = true;
+            // docDateStr is expected to be the document id in format YYYY-MM-DD
+            if (!docDateStr) return false;
+            if (!startStr || !endStr) return false;
+            return docDateStr >= startStr && docDateStr <= endStr;
+        } catch (e) {
+            return false;
         }
     }
 
-    // When report type is user, show user filter and populate by barbershop
+    // Toggle user filter when "Por Usuário" selected
     reportTypeSelect.addEventListener('change', async () => {
         if (reportTypeSelect.value === 'user') {
             userFilterContainer.classList.remove('hidden');
-            // Load users based on selected barbershop
-            const selectedBarb = barbershopSelect.value || 'all';
-            userFilterSelect.innerHTML = '<option value="all">Todos os Usuários</option>';
-            try {
-                let q = db.collection('users').orderBy('name');
-                const usersSnap = await q.get();
-                usersSnap.forEach(doc => {
-                    const u = doc.data();
-                    if (!u) return;
-                    if (selectedBarb !== 'all' && u.barbershopId && u.barbershopId !== selectedBarb) return;
-                    const opt = document.createElement('option');
-                    opt.value = doc.id;
-                    opt.textContent = `${u.name} (${u.role || 'sem papel'})`;
-                    userFilterSelect.appendChild(opt);
-                });
-            } catch (err) {
-                console.error('Erro ao carregar usuários:', err);
+            // Load users into select if not loaded yet
+            if (userFilterSelect.options.length <= 1) {
+                try {
+                    const usersSnapshot = await db.collection('users').orderBy('name').get();
+                    usersSnapshot.forEach(doc => {
+                        const user = doc.data();
+                        const opt = document.createElement('option');
+                        opt.value = doc.id;
+                        opt.textContent = `${user.name} (${user.role || 'sem papel'})`;
+                        userFilterSelect.appendChild(opt);
+                    });
+                } catch (err) {
+                    console.error('Erro ao carregar usuários para filtro:', err);
+                }
             }
         } else {
             userFilterContainer.classList.add('hidden');
         }
     });
 
-    // When barbershop changes, if report type is user, refresh user list
-    barbershopSelect.addEventListener('change', async () => {
-        if (reportTypeSelect.value === 'user') {
-            reportTypeSelect.dispatchEvent(new Event('change'));
-        }
-    });
-
-    await loadBarbershops();
-
+    // Generate report on button click
     generateBtn.addEventListener('click', async () => {
         const startDate = document.getElementById('report-start').value;
         const endDate = document.getElementById('report-end').value;
         const type = document.getElementById('report-type').value;
         const selectedUser = userFilterSelect.value;
-        const selectedBarbershop = barbershopSelect.value || 'all';
 
         if (!startDate || !endDate) {
             showToast('Selecione as datas inicial e final', 'error');
             return;
         }
+
+        // Ensure start <= end
         if (startDate > endDate) {
             showToast('Data início não pode ser maior que data fim', 'error');
             return;
@@ -1782,22 +1841,13 @@ async function loadReports() {
             let totalRevenue = 0, totalServiceCommission = 0, totalProductCommission = 0, totalCommission = 0;
             const userTotals = {};
 
-            // Build a user map for barbershop lookup and names
-            const usersSnapshot = await db.collection('users').get();
-            const userMap = {};
-            usersSnapshot.forEach(d => { const ud = d.data(); userMap[d.id] = ud; });
-
             snapshot.forEach(doc => {
                 const date = doc.id;
                 if (!dateInRange(date, startDate, endDate)) return;
-                const data = doc.data() || {};
-                // Determine this cashier doc level barbershop
-                const docBarbershop = data.barbershopId || null;
+                const data = doc.data();
+                if (!data) return;
                 const sales = data.sales || [];
                 sales.forEach(sale => {
-                    // determine sale level barbershop (sale.barbershopId) or fallback to docBarbershop or user's barbershop
-                    const saleBarbershop = sale.barbershopId || docBarbershop || (userMap[sale.userId] && userMap[sale.userId].barbershopId) || null;
-                    if (selectedBarbershop !== 'all' && saleBarbershop !== selectedBarbershop) return;
                     if (type === 'user' && selectedUser !== 'all' && sale.userId !== selectedUser) return;
 
                     const saleTotal = Number(sale.total || 0);
@@ -1810,7 +1860,9 @@ async function loadReports() {
                     totalProductCommission += productComm;
                     totalCommission += totalComm;
 
-                    if (!userTotals[sale.userId]) userTotals[sale.userId] = { total: 0, commission: 0 };
+                    if (!userTotals[sale.userId]) {
+                        userTotals[sale.userId] = { total: 0, commission: 0 };
+                    }
                     userTotals[sale.userId].total += saleTotal;
                     userTotals[sale.userId].commission += totalComm;
                 });
@@ -1855,19 +1907,16 @@ async function loadReports() {
                     </div>
                 `;
 
-                // Build daily rows considering barbershop filter
+                // Build daily summary table
                 let dailyRows = '';
                 snapshot.forEach(doc => {
                     const date = doc.id;
                     if (!dateInRange(date, startDate, endDate)) return;
-                    const data = doc.data() || {};
-                    const docBarbershop = data.barbershopId || null;
+                    const data = doc.data();
                     const sales = data.sales || [];
                     let dayTotal = 0;
                     let dayCommission = 0;
                     sales.forEach(sale => {
-                        const saleBarbershop = sale.barbershopId || docBarbershop || (userMap[sale.userId] && userMap[sale.userId].barbershopId) || null;
-                        if (selectedBarbershop !== 'all' && saleBarbershop !== selectedBarbershop) return;
                         dayTotal += Number(sale.total || 0);
                         dayCommission += Number(sale.totalCommission || 0);
                     });
@@ -1881,13 +1930,15 @@ async function loadReports() {
                     `;
                 });
 
+                // Insert daily rows (safe fallback)
                 html = html.replace('<tbody id="daily-summary-body" class="bg-white divide-y divide-gray-100"></tbody>',
                                     `<tbody id="daily-summary-body" class="bg-white divide-y divide-gray-100">${dailyRows}</tbody>`);
             } else {
                 // User report
-                const usersSnapshot2 = await db.collection('users').get();
-                const userMap2 = {};
-                usersSnapshot2.forEach(d => userMap2[d.id] = d.data().name || ('Usuário ' + d.id));
+                // Map user IDs to names (fetch users once)
+                const usersSnapshot = await db.collection('users').get();
+                const userMap = {};
+                usersSnapshot.forEach(doc => userMap[doc.id] = doc.data().name || ('Usuário ' + doc.id));
 
                 html = `
                     <div class="overflow-auto">
@@ -1902,11 +1953,14 @@ async function loadReports() {
                             <tbody class="bg-white divide-y divide-gray-100">
                 `;
 
+                // If userTotals empty, show a friendly message
                 if (Object.keys(userTotals).length === 0) {
-                    html += `<tr><td class="px-4 py-4 text-sm text-gray-700" colspan="3">Nenhuma venda encontrada para o período/usuário/unidade selecionado.</td></tr>`;
+                    html += `
+                        <tr><td class="px-4 py-4 text-sm text-gray-700" colspan="3">Nenhuma venda encontrada para o período/usuário selecionado.</td></tr>
+                    `;
                 } else {
                     Object.keys(userTotals).forEach(uid => {
-                        const name = userMap2[uid] || ('Usuário ' + uid);
+                        const name = userMap[uid] || ('Usuário ' + uid);
                         html += `
                             <tr>
                                 <td class="px-4 py-2 text-sm text-gray-700">${name}</td>
@@ -1923,7 +1977,7 @@ async function loadReports() {
             reportResults.innerHTML = html;
             downloadBtn.classList.remove('hidden');
 
-            // PDF export
+            // Configure PDF export (simple textual export)
             downloadBtn.onclick = async () => {
                 try {
                     const { jsPDF } = window.jspdf;
@@ -1931,32 +1985,30 @@ async function loadReports() {
                     const leftMargin = 40;
                     let y = 40;
                     doc.setFontSize(14);
-                    const selectedBarbName = barbershopSelect.value || 'Todas';
-                    doc.text(`Relatório Financeiro - ${selectedBarbName}`, leftMargin, y);
+                    doc.text("Relatório Financeiro - Barbearia Pedro's", leftMargin, y);
                     y += 20;
                     doc.setFontSize(11);
                     doc.text(`Período: ${startDate} até ${endDate}`, leftMargin, y);
                     y += 20;
 
+                    // For general summary, add totals
                     if (type === 'general') {
                         doc.text(`Total de Vendas: ${formatCurrency(totalRevenue)}`, leftMargin, y); y += 16;
                         doc.text(`Comissão Serviços: ${formatCurrency(totalServiceCommission)}`, leftMargin, y); y += 16;
                         doc.text(`Comissão Produtos: ${formatCurrency(totalProductCommission)}`, leftMargin, y); y += 16;
                         doc.text(`Comissão Total: ${formatCurrency(totalCommission)}`, leftMargin, y); y += 24;
 
+                        // Add daily rows (limited to avoid overflow)
                         doc.setFontSize(10);
                         doc.text("Resumo Diário:", leftMargin, y); y += 14;
                         snapshot.forEach(docSnap => {
                             const date = docSnap.id;
                             if (!dateInRange(date, startDate, endDate)) return;
-                            const data = docSnap.data() || {};
-                            const docBarbershop = data.barbershopId || null;
+                            const data = docSnap.data();
                             const sales = data.sales || [];
                             let dayTotal = 0;
                             let dayCommission = 0;
                             sales.forEach(sale => {
-                                const saleBarbershop = sale.barbershopId || docBarbershop || (userMap[sale.userId] && userMap[sale.userId].barbershopId) || null;
-                                if (selectedBarbershop !== 'all' && saleBarbershop !== selectedBarbershop) return;
                                 dayTotal += Number(sale.total || 0);
                                 dayCommission += Number(sale.totalCommission || 0);
                             });
@@ -1966,20 +2018,21 @@ async function loadReports() {
                             if (y > 750) { doc.addPage(); y = 40; }
                         });
                     } else {
+                        // For user report, list users
                         doc.setFontSize(10);
                         doc.text("Relatório por usuário:", leftMargin, y); y += 14;
-                        const usersSnapshot3 = await db.collection('users').get();
-                        const userMap3 = {};
-                        usersSnapshot3.forEach(d => userMap3[d.id] = d.data().name || ('Usuário ' + d.id));
+                        const usersSnapshot2 = await db.collection('users').get();
+                        const userMap2 = {};
+                        usersSnapshot2.forEach(d => userMap2[d.id] = d.data().name || ('Usuário ' + d.id));
                         Object.keys(userTotals).forEach(uid => {
-                            const name = userMap3[uid] || ('Usuário ' + uid);
+                            const name = userMap2[uid] || ('Usuário ' + uid);
                             const line = `${name} — Total: ${formatCurrency(userTotals[uid].total)} — Comissão: ${formatCurrency(userTotals[uid].commission)}`;
                             doc.text(line, leftMargin, y); y += 12;
                             if (y > 750) { doc.addPage(); y = 40; }
                         });
                     }
 
-                    doc.save(`relatorio-financeiro_${selectedBarbershop}_${startDate}_ate_${endDate}.pdf`);
+                    doc.save(`relatorio-financeiro_${startDate}_ate_${endDate}.pdf`);
                 } catch (err) {
                     console.error('Erro ao gerar PDF:', err);
                     showToast('Erro ao gerar PDF', 'error');
@@ -1992,7 +2045,6 @@ async function loadReports() {
         }
     });
 }
-
 
 
         async function loadUsers() {
@@ -2955,7 +3007,7 @@ async function loadReports() {
         async function closeCashierModal() {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                const cashierDoc = await db.collection('cashier').doc(today).get();
+                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
                 
                 if (!cashierDoc.exists) {
                     showToast('Caixa não encontrado', 'error');
@@ -3137,7 +3189,7 @@ async function loadReports() {
         async function generateCashierReport() {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                const cashierDoc = await db.collection('cashier').doc(today).get();
+                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
                 
                 if (!cashierDoc.exists) {
                     showToast('Dados do caixa não encontrados', 'error');
@@ -4435,340 +4487,40 @@ async function loadReports() {
             }
         });
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99dff0ce32bbfe12',t:'MTc2MzA1NDQzNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
-
-/* ===== Multi-unidade UI & Handlers (injected) ===== */
-(function(){
-    // Configure your barbershop list here (id -> display name)
-    const BARBERSHOPS = [
-        { id: 'barbearia_pedro_1', name: 'Barbearia Pedro 1' },
-        { id: 'barbearia_pedro_2', name: 'Barbearia Pedro 2' }
-    ];
-
-    // Render admin selector in header
-    function renderHeaderBarbershopSelector(){
-        const container = document.getElementById('admin-barbershop-container');
-        if(!container) return;
-        container.innerHTML = '';
-        if(!currentUser || currentUser.role !== 'admin') return;
-        const label = document.createElement('div');
-        label.className = 'text-sm text-gray-600';
-        label.textContent = 'Unidade:';
-        const sel = document.createElement('select');
-        sel.id = 'global-barbershop-select';
-        sel.className = 'border rounded px-2 py-1 text-sm';
-        const optAll = document.createElement('option');
-        optAll.value = 'all';
-        optAll.textContent = 'Todas as Unidades';
-        sel.appendChild(optAll);
-        BARBERSHOPS.forEach(b => {
-            const o = document.createElement('option');
-            o.value = b.id;
-            o.textContent = b.name;
-            sel.appendChild(o);
-        });
-
-        // load from session or default
-        const active = sessionStorage.getItem('activeBarbershop') || 'all';
-        sel.value = active;
-
-        sel.addEventListener('change', () => {
-            sessionStorage.setItem('activeBarbershop', sel.value);
-            // refresh current section content
-            try { loadSectionContent(currentSection); } catch(e){ console.warn(e); location.reload(); }
-        });
-
-        container.appendChild(label);
-        container.appendChild(sel);
-    }
-
-    // Utility to get active barbershop (admin can change global, others use their own)
-    window.getActiveBarbershop = function(){
-        if(currentUser && currentUser.role !== 'admin'){
-            return currentUser.barbershopId || 'all';
-        }
-        return sessionStorage.getItem('activeBarbershop') || 'all';
-    };
-
-    // When app shows main, render selector
-    const _origShowMainApp = window.showMainApp;
-    window.showMainApp = function(){
-        try { renderHeaderBarbershopSelector(); } catch(e){ console.warn(e); }
-        if(typeof _origShowMainApp === 'function') _origShowMainApp();
-    };
-
-    // If already on main, render now
-    try { renderHeaderBarbershopSelector(); } catch(e){}
-
-    /* ===== Modals for creating users and services with Unidade field ===== */
-    const modalContainer = document.getElementById('modal-container');
-    if(modalContainer){
-        modalContainer.insertAdjacentHTML('beforeend', `
-            <!-- User Modal -->
-            <div id="modal-user" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50">
-                <div class="bg-white rounded-lg w-full max-w-lg p-6">
-                    <h3 class="text-lg font-bold mb-4">Novo Usuário</h3>
-                    <div class="space-y-3">
-                        <input id="mu-name" placeholder="Nome" class="w-full border rounded px-3 py-2">
-                        <input id="mu-email" placeholder="Email" class="w-full border rounded px-3 py-2">
-                        <input id="mu-password" placeholder="Senha" class="w-full border rounded px-3 py-2">
-                        <select id="mu-role" class="w-full border rounded px-3 py-2">
-                            <option value="barbeiro">Barbeiro</option>
-                            <option value="admin">Administrador</option>
-                            <option value="caixa">Caixa</option>
-                        </select>
-                        <select id="mu-barbershop" class="w-full border rounded px-3 py-2">
-                            <option value="barbearia_pedro_1">Barbearia Pedro 1</option>
-                            <option value="barbearia_pedro_2">Barbearia Pedro 2</option>
-                        </select>
-                        <div class="flex justify-end space-x-2">
-                            <button id="mu-cancel" class="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
-                            <button id="mu-save" class="px-4 py-2 bg-blue-600 text-white rounded">Salvar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Service Modal -->
-            <div id="modal-service" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50">
-                <div class="bg-white rounded-lg w-full max-w-lg p-6">
-                    <h3 class="text-lg font-bold mb-4">Novo Serviço</h3>
-                    <div class="space-y-3">
-                        <input id="ms-name" placeholder="Nome do Serviço" class="w-full border rounded px-3 py-2">
-                        <input id="ms-price" placeholder="Preço (0.00)" type="number" step="0.01" class="w-full border rounded px-3 py-2">
-                        <input id="ms-duration" placeholder="Duração (min)" type="number" class="w-full border rounded px-3 py-2">
-                        <select id="ms-barbershop" class="w-full border rounded px-3 py-2">
-                            <option value="barbearia_pedro_1">Barbearia Pedro 1</option>
-                            <option value="barbearia_pedro_2">Barbearia Pedro 2</option>
-                        </select>
-                        <div class="flex justify-end space-x-2">
-                            <button id="ms-cancel" class="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
-                            <button id="ms-save" class="px-4 py-2 bg-blue-600 text-white rounded">Salvar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `);
-    }
-
-    // Modal helpers
-    function showModal(id){ const m=document.getElementById(id); if(m){ m.classList.remove('hidden'); m.style.display='flex'; } }
-    function hideModal(id){ const m=document.getElementById(id); if(m){ m.classList.add('hidden'); m.style.display='none'; } }
-
-    // Hook new-user-btn
-    const newUserBtn = document.getElementById('new-user-btn');
-    if(newUserBtn){
-        newUserBtn.addEventListener('click', () => {
-            showModal('modal-user');
-            // prefill barbershop for non-admin
-            const select = document.getElementById('mu-barbershop');
-            if(currentUser && currentUser.role !== 'admin'){
-                select.value = currentUser.barbershopId || 'barbearia_pedro_1';
-                select.disabled = true;
-            } else {
-                select.disabled = false;
-            }
-        });
-    }
-    // Hook new-service-btn
-    const newServiceBtn = document.getElementById('new-service-btn');
-    if(newServiceBtn){
-        newServiceBtn.addEventListener('click', () => {
-            showModal('modal-service');
-            const select = document.getElementById('ms-barbershop');
-            if(currentUser && currentUser.role !== 'admin'){
-                select.value = currentUser.barbershopId || 'barbearia_pedro_1';
-                select.disabled = true;
-            } else {
-                select.disabled = false;
-            }
-        });
-    }
-
-    // Modal cancel buttons
-    document.addEventListener('click', function(e){
-        if(e.target && e.target.id === 'mu-cancel') hideModal('modal-user');
-        if(e.target && e.target.id === 'ms-cancel') hideModal('modal-service');
-    });
-
-    // Save new user
-    const muSave = document.getElementById('mu-save');
-    if(muSave){
-        muSave.addEventListener('click', async () => {
-            const name = document.getElementById('mu-name').value.trim();
-            const email = document.getElementById('mu-email').value.trim();
-            const password = document.getElementById('mu-password').value.trim();
-            const role = document.getElementById('mu-role').value;
-            const barbershopId = document.getElementById('mu-barbershop').value || 'barbearia_pedro_1';
-            if(!name || !email) { showToast('Nome e email são necessários','error'); return; }
-            try{
-                await db.collection('users').add({
-                    name, email, password, role, barbershopId, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                showToast('Usuário criado com sucesso');
-                hideModal('modal-user');
-                loadUsers();
-            }catch(err){ console.error(err); showToast('Erro ao criar usuário','error'); }
-        });
-    }
-
-    // Save new service
-    const msSave = document.getElementById('ms-save');
-    if(msSave){
-        msSave.addEventListener('click', async () => {
-            const name = document.getElementById('ms-name').value.trim();
-            const price = parseFloat(document.getElementById('ms-price').value) || 0;
-            const duration = parseInt(document.getElementById('ms-duration').value) || 30;
-            const barbershopId = document.getElementById('ms-barbershop').value || 'barbearia_pedro_1';
-            if(!name) { showToast('Nome do serviço é necessário','error'); return; }
-            try{
-                await db.collection('services').add({
-                    name, price, duration, barbershopId, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                showToast('Serviço criado com sucesso');
-                hideModal('modal-service');
-                loadServices();
-            }catch(err){ console.error(err); showToast('Erro ao criar serviço','error'); }
-        });
-    }
-
-    // On page load, ensure admin selector rendered
-    document.addEventListener('DOMContentLoaded', ()=> {
-        try { renderHeaderBarbershopSelector(); } catch(e){ console.warn(e); }
-    });
-
-    // Enhance loadUsers and loadServices to respect active barbershop where used (light-touch)
-    const _origLoadUsers = window.loadUsers;
-    window.loadUsers = async function(){
-        try {
-            const container = document.getElementById('users-list');
-            if(!container) return;
-            // call original if exists to keep behavior, then filter UI by active barbershop
-            if(typeof _origLoadUsers === 'function'){
-                await _origLoadUsers();
-            }
-            // If admin, refresh list according to selected barbershop
-            const active = getActiveBarbershop();
-            // if not 'all', filter displayed user cards to show only those with matching barbershopId
-            const userCards = container.querySelectorAll('[data-user-id]');
-            userCards.forEach(card => {
-                try{
-                    const uid = card.getAttribute('data-user-id');
-                    const userRole = card.getAttribute('data-user-barbershop') || '';
-                    if(active !== 'all' && userRole !== active) card.style.display = 'none';
-                    else card.style.display = '';
-                }catch(e){}
-            });
-        } catch(e){ console.warn(e); if(typeof _origLoadUsers==='function') _origLoadUsers(); }
-    };
-
-    const _origLoadServices = window.loadServices;
-    window.loadServices = async function(){
-        try {
-            const container = document.getElementById('services-list');
-            if(!container) return;
-            if(typeof _origLoadServices === 'function'){
-                await _origLoadServices();
-            }
-            const active = getActiveBarbershop();
-            const serviceCards = container.querySelectorAll('[data-service-id]');
-            serviceCards.forEach(card => {
-                try{
-                    const sid = card.getAttribute('data-service-barbershop') || '';
-                    if(active !== 'all' && sid !== active) card.style.display = 'none';
-                    else card.style.display = '';
-                }catch(e){}
-            });
-        } catch(e){ console.warn(e); if(typeof _origLoadServices==='function') _origLoadServices(); }
-    };
-
-})();
-
-</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99dff0ce32bbfe12',t:'MTc2MzA1NDQzNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 <script>
-/* Patch script to wire user/service cards and delegated modal buttons */
 (function(){
-    function setUserCardsAttributes(){
+    const BARBERS = [{id:'barber1', name:'Barbearia Pedro 1'},{id:'barber2', name:'Barbearia Pedro 2'}];
+    function renderDropdown(){
         try{
-            const container = document.getElementById('users-list');
+            const container = document.getElementById('admin-barbershop-container');
             if(!container) return;
-            const els = container.querySelectorAll('[onclick*="editUser("]');
-            els.forEach(el=>{
-                const onclick = el.getAttribute('onclick') || '';
-                const m = onclick.match(/editUser\('([^']+)'/);
-                if(m){
-                    const uid = m[1];
-                    el.setAttribute('data-user-id', uid);
-                    // fetch user barbershop and set attribute
-                    db.collection('users').doc(uid).get().then(doc => {
-                        if(doc.exists){
-                            const u = doc.data();
-                            if(u && u.barbershopId) el.setAttribute('data-user-barbershop', u.barbershopId);
-                        }
-                    }).catch(()=>{});
-                }
-            });
-        }catch(e){console.warn(e);}
+            container.innerHTML = '';
+            if(!window.currentUser || window.currentUser.role !== 'admin'){ container.style.display='none'; return; }
+            container.style.display='flex';
+            const lbl = document.createElement('div'); lbl.textContent='Unidade:'; lbl.style.marginRight='6px'; lbl.style.fontSize='13px';
+            const sel = document.createElement('select'); sel.id='global-barbershop-select'; sel.style.padding='6px'; sel.style.borderRadius='4px';
+            const optAll = document.createElement('option'); optAll.value='all'; optAll.textContent='Todas as Unidades'; sel.appendChild(optAll);
+            BARBERS.forEach(b=>{ const o=document.createElement('option'); o.value=b.id; o.textContent=b.name; sel.appendChild(o); });
+            const active = sessionStorage.getItem('activeBarbershop') || 'all'; sel.value = active;
+            sel.addEventListener('change', ()=>{ sessionStorage.setItem('activeBarbershop', sel.value); if(typeof loadUsers==='function') loadUsers(); if(typeof loadServices==='function') loadServices(); if(typeof loadAppointments==='function') loadAppointments(); if(typeof loadCashier==='function') loadCashier(); if(typeof loadReports==='function') loadReports(); if(typeof loadDashboard==='function') loadDashboard(); });
+            container.appendChild(lbl); container.appendChild(sel);
+        }catch(e){ console.warn(e); }
     }
-    function setServiceCardsAttributes(){
-        try{
-            const container = document.getElementById('services-list');
-            if(!container) return;
-            const els = container.querySelectorAll('[onclick*="editService("]');
-            els.forEach(el=>{
-                const onclick = el.getAttribute('onclick') || '';
-                const m = onclick.match(/editService\('([^']+)'/);
-                if(m){
-                    const sid = m[1];
-                    el.setAttribute('data-service-id', sid);
-                    db.collection('services').doc(sid).get().then(doc => {
-                        if(doc.exists){
-                            const s = doc.data();
-                            if(s && s.barbershopId) el.setAttribute('data-service-barbershop', s.barbershopId);
-                        }
-                    }).catch(()=>{});
-                }
-            });
-        }catch(e){console.warn(e);}
+    // Poll for currentUser ready then render
+    let tries=0; const max=50;
+    const poll=setInterval(()=>{
+        tries++;
+        if(window.currentUser !== undefined){
+            renderDropdown(); clearInterval(poll);
+        } else if(tries>max){ renderDropdown(); clearInterval(poll); }
+    },200);
+    // Also re-render when showMainApp is called (if exists)
+    if(typeof window.showMainApp === 'function'){
+        const orig = window.showMainApp;
+        window.showMainApp = function(){ try{ renderDropdown(); }catch(e){} return orig.apply(this, arguments); };
     }
-
-    // Run on load and whenever users/services lists change
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(()=>{ setUserCardsAttributes(); setServiceCardsAttributes(); }, 800);
-    });
-
-    // Observe containers for changes
-    const usersContainer = document.getElementById('users-list');
-    if(usersContainer){
-        const mo = new MutationObserver(()=> setUserCardsAttributes());
-        mo.observe(usersContainer, {childList:true, subtree:true});
-    }
-    const servicesContainer = document.getElementById('services-list');
-    if(servicesContainer){
-        const mo2 = new MutationObserver(()=> setServiceCardsAttributes());
-        mo2.observe(servicesContainer, {childList:true, subtree:true});
-    }
-
-    // Delegated click for new-user-btn and new-service-btn
-    document.addEventListener('click', function(e){
-        const nu = e.target.closest('#new-user-btn');
-        if(nu){
-            const sel = document.getElementById('mu-barbershop');
-            showModal('modal-user');
-            if(currentUser && currentUser.role !== 'admin'){ if(sel){ sel.value = currentUser.barbershopId || 'barbearia_pedro_1'; sel.disabled = true; } }
-            return;
-        }
-        const ns = e.target.closest('#new-service-btn');
-        if(ns){
-            const sel = document.getElementById('ms-barbershop');
-            showModal('modal-service');
-            if(currentUser && currentUser.role !== 'admin'){ if(sel){ sel.value = currentUser.barbershopId || 'barbearia_pedro_1'; sel.disabled = true; } }
-            return;
-        }
-    });
-
 })();
 </script>
-
 </body>
 </html>
