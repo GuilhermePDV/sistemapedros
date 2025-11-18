@@ -76,85 +76,7 @@
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body class="bg-gray-50 h-full">
-<!-- Multi-unidade: modais for quick create (injected) -->
-<div id="multi-modals" style="display:none;">
-  <div id="modal-user-simple" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
-    <div style="background:#fff;padding:20px;max-width:420px;margin:40px auto;border-radius:8px;">
-      <h3>Novo Usuário</h3>
-      <input id="mu-name" placeholder="Nome" style="width:100%;padding:8px;margin:6px 0;">
-      <input id="mu-email" placeholder="Email" style="width:100%;padding:8px;margin:6px 0;">
-      <select id="mu-role" style="width:100%;padding:8px;margin:6px 0;">
-        <option value="barbeiro">Barbeiro</option>
-        <option value="caixa">Caixa</option>
-        <option value="admin">Administrador</option>
-      </select>
-      <select id="mu-barbershop" style="width:100%;padding:8px;margin:6px 0;">
-        <option value="barber1">Barbearia Pedro 1</option>
-        <option value="barber2">Barbearia Pedro 2</option>
-      </select>
-      <div style="text-align:right;">
-        <button id="mu-cancel" style="margin-right:8px;">Cancelar</button>
-        <button id="mu-save">Salvar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-service-simple" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
-    <div style="background:#fff;padding:20px;max-width:420px;margin:40px auto;border-radius:8px;">
-      <h3>Novo Serviço</h3>
-      <input id="ms-name" placeholder="Nome do Serviço" style="width:100%;padding:8px;margin:6px 0;">
-      <input id="ms-price" placeholder="Preço" type="number" style="width:100%;padding:8px;margin:6px 0;">
-      <select id="ms-barbershop" style="width:100%;padding:8px;margin:6px 0;">
-        <option value="barber1">Barbearia Pedro 1</option>
-        <option value="barber2">Barbearia Pedro 2</option>
-      </select>
-      <div style="text-align:right;">
-        <button id="ms-cancel" style="margin-right:8px;">Cancelar</button>
-        <button id="ms-save">Salvar</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
-// Modal handlers (injected)
-(function(){
-  function show(id){ document.getElementById(id).style.display='flex'; }
-  function hide(id){ document.getElementById(id).style.display='none'; }
-  document.addEventListener('click', function(e){
-    if(e.target && e.target.id==='mu-cancel') hide('modal-user-simple');
-    if(e.target && e.target.id==='ms-cancel') hide('modal-service-simple');
-  });
-  const btnUser = document.getElementById('new-user-btn');
-  if(btnUser) btnUser.addEventListener('click', ()=>{ show('modal-user-simple'); });
-  const btnService = document.getElementById('new-service-btn');
-  if(btnService) btnService.addEventListener('click', ()=>{ show('modal-service-simple'); });
-  window.openUserModal = function(){ show('modal-user-simple'); };
-  window.openServiceModal = function(){ show('modal-service-simple'); };
-  document.getElementById('mu-save').addEventListener('click', async function(){
-    const name = document.getElementById('mu-name').value.trim();
-    const email = document.getElementById('mu-email').value.trim();
-    const role = document.getElementById('mu-role').value;
-    const barbershopId = document.getElementById('mu-barbershop').value || 'barber1';
-    if(!name || !email){ alert('Nome e email são obrigatórios'); return; }
-    try{
-      await db.collection('users').add({ name, email, role, barbershopId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      hide('modal-user-simple'); if(typeof loadUsers==='function') loadUsers(); alert('Usuário criado com sucesso');
-    }catch(e){ console.error(e); alert('Erro ao criar usuário'); }
-  });
-  document.getElementById('ms-save').addEventListener('click', async function(){
-    const name = document.getElementById('ms-name').value.trim();
-    const price = parseFloat(document.getElementById('ms-price').value) || 0;
-    const barbershopId = document.getElementById('ms-barbershop').value || 'barber1';
-    if(!name){ alert('Nome do serviço obrigatório'); return; }
-    try{
-      await db.collection('services').add({ name, price, barbershopId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      hide('modal-service-simple'); if(typeof loadServices==='function') loadServices(); alert('Serviço criado com sucesso');
-    }catch(e){ console.error(e); alert('Erro ao criar serviço'); }
-  });
-})();
-</script>
-<!-- Toast Container -->
+ <body class="bg-gray-50 h-full"><!-- Toast Container -->
   <div id="toast-container"></div><!-- Login Screen -->
   <div id="login-screen" class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
    <div class="max-w-md w-full space-y-8">
@@ -162,12 +84,10 @@
      <h2 class="mt-6 text-3xl font-bold text-gray-900" id="business-title">Barbearia Pedro's</h2>
      <p class="mt-2 text-sm text-gray-600">Sistema de Gestão</p>
     </div><!-- Demo credentials info -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-     <h3 class="text-sm font-medium text-blue-800 mb-2">Credenciais de Demonstração:</h3>
+    <div class=" ">
      <div class="text-xs text-blue-700 space-y-1">
-      <p><strong>Email:</strong> admin@barbearia.com</p>
-      <p><strong>Senha:</strong> 123456</p>
-      <p class="text-blue-600 mt-2">O usuário será criado automaticamente se não existir.</p>
+
+
      </div>
     </div>
     <form id="login-form" class="mt-8 space-y-6">
@@ -179,7 +99,6 @@
      </div><button type="submit" id="login-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"> <span id="login-text">Entrar</span>
       <div id="login-spinner" class="loading-spinner ml-2 hidden"></div></button>
     </form>
-    <div class="text-center"><button id="create-demo-user" class="text-sm text-blue-600 hover:text-blue-500"> Criar usuário de demonstração </button>
     </div>
    </div>
   </div><!-- Main App -->
@@ -236,9 +155,7 @@
       <div class="flex items-center space-x-4"><span class="text-sm text-gray-500" id="current-date"></span>
       </div>
      </div>
-    
-    <div id="admin-barbershop-container" style="position:absolute; right:18px; top:12px; z-index:9999;"></div>
-</header><!-- Content Area -->
+    </header><!-- Content Area -->
     <main class="p-6"><!-- Dashboard Section -->
      <div id="dashboard-section" class="section">
       <div class="mb-6">
@@ -497,36 +414,6 @@
             element.innerHTML = '<div class="flex items-center justify-center py-8"><div class="loading-spinner"></div></div>';
         }
 
-// --- Multi-unidade helpers ---
-function getActiveBarbershop() {
-    // If currentUser exists and is not admin, return their barbershopId; admin uses sessionStorage or 'all'
-    try {
-        if (window.currentUser && window.currentUser.role && window.currentUser.role !== 'admin') {
-            return window.currentUser.barbershopId || 'barber1';
-        }
-    } catch (e) { /* ignore */ }
-    return sessionStorage.getItem('activeBarbershop') || 'all';
-}
-function applyBarbershopFilterToQuery(q) {
-    try {
-        const active = getActiveBarbershop();
-        if (!active || active === 'all') return q;
-        if (q && typeof q.where === 'function') {
-            // best-effort: avoid adding duplicate filter
-            try {
-                const s = q.toString ? q.toString() : '';
-                if (s && s.indexOf("barbershopId") !== -1) return q;
-            } catch (e) {}
-            return q.where('barbershopId', '==', active);
-        }
-    } catch (e) {
-        console.warn('applyBarbershopFilterToQuery error', e);
-    }
-    return q;
-}
-// --- end helpers ---
-
-
         // Authentication Functions
         async function login(email, password) {
             try {
@@ -734,7 +621,9 @@ function applyBarbershopFilterToQuery(q) {
                 const todayStr = today.toISOString().split('T')[0];
                 
                 // Load today's appointments
-                let appointmentsQueryRef = db.collection('appointments').where('date','==', todayStr); appointmentsQueryRef = applyBarbershopFilterToQuery(appointmentsQueryRef); const appointmentsQuery = await appointmentsQueryRef.get();
+                const appointmentsQuery = await db.collection('appointments')
+                    .where('date', '==', todayStr)
+                    .get();
                 
                 document.getElementById('today-appointments').textContent = appointmentsQuery.size;
                 
@@ -754,7 +643,7 @@ function applyBarbershopFilterToQuery(q) {
                 let myProductsCommission = 0;
                 
                 try {
-                    let cashierRef = db.collection('cashier').where('date','==', todayStr); cashierRef = applyBarbershopFilterToQuery(cashierRef); const cashierSnap = await cashierRef.get(); const cashierDoc = cashierSnap.docs.length ? cashierSnap.docs[0] : { exists:false, data: ()=>({}) };
+                    const cashierDoc = await db.collection('cashier').doc(todayStr).get();
                     if (cashierDoc.exists) {
                         const sales = cashierDoc.data().sales || [];
                         
@@ -793,7 +682,7 @@ function applyBarbershopFilterToQuery(q) {
                 }
                 
                 // Load total clients
-                let clientsRef = db.collection('clients'); clientsRef = applyBarbershopFilterToQuery(clientsRef); const clientsQuery = await clientsRef.get();
+                const clientsQuery = await db.collection('clients').get();
                 document.getElementById('total-clients').textContent = clientsQuery.size;
                 
                 // Load next appointments
@@ -813,7 +702,12 @@ function applyBarbershopFilterToQuery(q) {
                 const today = new Date();
                 const todayStr = today.toISOString().split('T')[0];
                 
-                let query = db.collection('appointments').where('date','>=', todayStr).where('status','==','agendado').orderBy('date').orderBy('time').limit(5); query = applyBarbershopFilterToQuery(query);
+                const query = db.collection('appointments')
+                    .where('date', '>=', todayStr)
+                    .where('status', '==', 'agendado')
+                    .orderBy('date')
+                    .orderBy('time')
+                    .limit(5);
                 
                 const snapshot = await query.get();
                 const container = document.getElementById('next-appointments');
@@ -859,7 +753,7 @@ function applyBarbershopFilterToQuery(q) {
         async function checkCashierStatus() {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
+                const cashierDoc = await db.collection('cashier').doc(today).get();
                 
                 const statusContainer = document.getElementById('cashier-status');
                 
@@ -907,7 +801,9 @@ function applyBarbershopFilterToQuery(q) {
                 const currentDateStr = currentDate.toISOString().split('T')[0];
                 
                 // Get appointments for current day
-                let q_apps = db.collection('appointments').where('date','==', currentDateStr); q_apps = applyBarbershopFilterToQuery(q_apps); const snapshot = await q_apps.get();
+                const snapshot = await db.collection('appointments')
+                    .where('date', '==', currentDateStr)
+                    .get();
                 
                 const dayAppointments = [];
                 
@@ -1187,7 +1083,7 @@ function applyBarbershopFilterToQuery(q) {
             showLoading(container);
             
             try {
-                let q_clients = db.collection('clients').orderBy('name'); q_clients = applyBarbershopFilterToQuery(q_clients); const snapshot = await q_clients.get();
+                const snapshot = await db.collection('clients').orderBy('name').get();
                 
                 if (snapshot.empty) {
                     container.innerHTML = `
@@ -1238,7 +1134,7 @@ function applyBarbershopFilterToQuery(q) {
             showLoading(container);
             
             try {
-                let q_services = db.collection('services').orderBy('name'); q_services = applyBarbershopFilterToQuery(q_services); const snapshot = await q_services.get();
+                const snapshot = await db.collection('services').orderBy('name').get();
                 
                 if (snapshot.empty) {
                     container.innerHTML = `
@@ -1344,7 +1240,7 @@ function applyBarbershopFilterToQuery(q) {
             showLoading(container);
             
             try {
-                let q_products = db.collection('products').orderBy('name'); q_products = applyBarbershopFilterToQuery(q_products); const snapshot = await q_products.get();
+                const snapshot = await db.collection('products').orderBy('name').get();
                 
                 if (snapshot.empty) {
                     container.innerHTML = `
@@ -1413,7 +1309,7 @@ function applyBarbershopFilterToQuery(q) {
             
             try {
                 const today = new Date().toISOString().split('T')[0];
-                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
+                const cashierDoc = await db.collection('cashier').doc(today).get();
                 
                 if (!cashierDoc.exists || !cashierDoc.data().isOpen) {
                     container.innerHTML = `
@@ -3007,7 +2903,7 @@ async function loadReports() {
         async function closeCashierModal() {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
+                const cashierDoc = await db.collection('cashier').doc(today).get();
                 
                 if (!cashierDoc.exists) {
                     showToast('Caixa não encontrado', 'error');
@@ -3189,7 +3085,7 @@ async function loadReports() {
         async function generateCashierReport() {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                let cashierQuery2 = db.collection('cashier').where('date','==', today); cashierQuery2 = applyBarbershopFilterToQuery(cashierQuery2); const cashierSnapshot2 = await cashierQuery2.get(); const cashierDoc = cashierSnapshot2.docs.length ? cashierSnapshot2.docs[0] : { exists:false, data: ()=>({}) };
+                const cashierDoc = await db.collection('cashier').doc(today).get();
                 
                 if (!cashierDoc.exists) {
                     showToast('Dados do caixa não encontrados', 'error');
@@ -4487,40 +4383,5 @@ async function loadReports() {
             }
         });
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99dff0ce32bbfe12',t:'MTc2MzA1NDQzNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-<script>
-(function(){
-    const BARBERS = [{id:'barber1', name:'Barbearia Pedro 1'},{id:'barber2', name:'Barbearia Pedro 2'}];
-    function renderDropdown(){
-        try{
-            const container = document.getElementById('admin-barbershop-container');
-            if(!container) return;
-            container.innerHTML = '';
-            if(!window.currentUser || window.currentUser.role !== 'admin'){ container.style.display='none'; return; }
-            container.style.display='flex';
-            const lbl = document.createElement('div'); lbl.textContent='Unidade:'; lbl.style.marginRight='6px'; lbl.style.fontSize='13px';
-            const sel = document.createElement('select'); sel.id='global-barbershop-select'; sel.style.padding='6px'; sel.style.borderRadius='4px';
-            const optAll = document.createElement('option'); optAll.value='all'; optAll.textContent='Todas as Unidades'; sel.appendChild(optAll);
-            BARBERS.forEach(b=>{ const o=document.createElement('option'); o.value=b.id; o.textContent=b.name; sel.appendChild(o); });
-            const active = sessionStorage.getItem('activeBarbershop') || 'all'; sel.value = active;
-            sel.addEventListener('change', ()=>{ sessionStorage.setItem('activeBarbershop', sel.value); if(typeof loadUsers==='function') loadUsers(); if(typeof loadServices==='function') loadServices(); if(typeof loadAppointments==='function') loadAppointments(); if(typeof loadCashier==='function') loadCashier(); if(typeof loadReports==='function') loadReports(); if(typeof loadDashboard==='function') loadDashboard(); });
-            container.appendChild(lbl); container.appendChild(sel);
-        }catch(e){ console.warn(e); }
-    }
-    // Poll for currentUser ready then render
-    let tries=0; const max=50;
-    const poll=setInterval(()=>{
-        tries++;
-        if(window.currentUser !== undefined){
-            renderDropdown(); clearInterval(poll);
-        } else if(tries>max){ renderDropdown(); clearInterval(poll); }
-    },200);
-    // Also re-render when showMainApp is called (if exists)
-    if(typeof window.showMainApp === 'function'){
-        const orig = window.showMainApp;
-        window.showMainApp = function(){ try{ renderDropdown(); }catch(e){} return orig.apply(this, arguments); };
-    }
-})();
-</script>
-</body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99dff0ce32bbfe12',t:'MTc2MzA1NDQzNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
